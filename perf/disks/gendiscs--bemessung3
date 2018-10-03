@@ -1,0 +1,25 @@
+#!/bin/bash
+# -6 dB
+GAIN=0.5  
+PREFIX="Eduardo_Moguillansky"
+
+gensines.py --overwrite --gain $GAIN -o sideA-1ch.wav -d $(expr 60 \* 8) 3E 3F
+
+gensines.py --overwrite --gain $GAIN -o sideB-s1.wav -d $(expr 60 \* 4) 3G
+gensines.py --overwrite --gain $GAIN -o sideB-s2.wav -d $(expr 60 \* 4) 2Bb
+sndfile-concat sideB-s1.wav sideB-s2.wav sideB-1ch.wav
+
+makeFlac() {
+    infile=$1
+    outfile=$2
+    out24=$(addsuffix $infile -24bit)
+    sndfile-convert -pcm24 $infile $out24
+    outstereo=$(addsuffix $out24 -stereo)
+    sndfile-add-silent-channel -o $outstereo $out24
+    flac -o $outfile $outstereo
+}
+
+makeFlac sideA-1ch.wav $PREFIX-sideA-33rpm-stereo.flac
+makeFlac sideB-1ch.wav $PREFIX-sideB-33rpm-stereo.flac
+
+rm *.wav

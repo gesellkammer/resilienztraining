@@ -1,0 +1,134 @@
+#!/bin/bash
+# -6 dB
+GAIN=0.707  
+PREFIX="Eduardo_Moguillansky"
+RPM=45
+ORIG_SIDE_DUR=600
+SIDE_DUR=480
+SEPARADOR_DUR=3
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+DUR_RATIO=$(lua -e "print($SIDE_DUR / $ORIG_SIDE_DUR)")
+
+# RPM: 33 1/3
+# 12' 
+# Maxima duracion: 10 min. (Max. duracion indicada por duophonic: 12 min. para 12' @ 33 1/3 ) 
+# Cuanto menor es la duracion, mejor es la calidad porque el groove se puede hacer mas ancho, 
+# aumentando la relacion entre sonido / ruido (NSR)
+
+# Para 12' se usa tradicionalmente 33 1/3 (la enorme mayoria de vinilos son 12' @ 33
+
+mkSound () {
+	tt=$1
+	pos=$2
+	dur=$3
+	dur=$(lua -e "print($dur * $DUR_RATIO)")
+	shift 3
+	outfile="$tt-$pos.wav"
+	notes="$@"
+	if [ "$RPM" == "45" ]; then
+		notes="$(cnv --spaces to45 $notes)"
+	fi
+	echo gensines --overwrite --gain $GAIN --attack 1 --release 3 --marginright $SEPARADOR_DUR -o "$outfile" -d $dur "$notes"
+	gensines --overwrite --gain $GAIN --attack 1 --release 3 --marginright $SEPARADOR_DUR -o "$outfile" -d $dur "$notes"
+}
+
+concatParts() {
+	out="$1"
+	shift
+	files="$@"
+	
+	echo sndfile-concat $out $files
+	sndfile-concat $files $out
+	rm $files
+}
+
+makeFlac () {
+	infile=$1
+    outfile=$(withext "$1" flac)
+    out24=$(addsuffix $infile -24bit)
+    sndfile-convert -pcm24 $infile $out24
+    flac -f -o $outfile "$out24"
+    rm "$out24"
+}
+
+mkDisk() {
+	disk="$1"
+	sideA=$disk-sideA-$RPM-rpm.wav
+	sideB=$disk-sideB-$RPM-rpm.wav
+	concatParts $sideA $disk-A?.wav
+	concatParts $sideB $disk-B?.wav
+	makeFlac $sideA
+	makeFlac $sideB 
+	rm $sideA
+	rm $sideB
+}
+
+
+folder=snd-$RPM
+mkdir -p $folder
+cd $folder
+
+# Estos datos toman como referencia un RPM de 33 1/3 y una duracion total de $ORIG_SIDE_DUR
+
+tt1() {
+	mkSound TT1 A1 180 6B-20 6A+30
+	mkSound TT1 A2 120 7G-20 7F#-20
+	mkSound TT1 A3 150 6G#-20
+	mkSound TT1 A4 150 7E
+
+	mkSound TT1 B1 200 3F- 3Eb
+	mkSound TT1 B2 200 3B-20 3A+30
+	mkSound TT1 B3 200 3C+30 2B-20
+
+	mkDisk TT1
+}
+
+
+tt2() {
+	mkSound TT2 A1 120 7F+ 7E+
+	mkSound TT2 A2 120 7Db 7C-20
+	mkSound TT2 A3 120 6A+30
+	mkSound TT2 A4 120 7D+
+	mkSound TT2 A5 120 3A-20 3G#+30
+
+	mkSound TT2 B1 200 3Bb-20 3Ab+30
+	mkSound TT2 B2 133 4E-20
+	mkSound TT2 B3 133 3Bb-20
+	mkSound TT2 B4 133 3F#
+
+	mkDisk TT2
+}
+
+tt3() {
+	mkSound TT3 A1 150 7F+ 7E+
+	mkSound TT3 A2 150 6A#-20 6G#-20
+	mkSound TT3 A3 150 7E-20 7D+30
+	mkSound TT3 A4 150 6A-20
+	mkSound TT3 B1 150 3A-20 3G#+30
+	mkSound TT3 B2 225 3Bb-20 3Ab+30
+	mkSound TT3 B3 225 3F+60 3E+10
+
+	mkDisk TT3
+}
+
+tt4() {
+	mkSound TT4 A1 100 3E-20 3D#-20
+	mkSound TT4 A2 120 7E-20 7D+30
+	mkSound TT4 A3 150 6B-
+	mkSound TT4 A4 230 6A-20
+
+	mkSound TT4 B1 200 3F-40 3Eb+10
+	mkSound TT4 B2 200 3B-20 3A+30
+	mkSound TT4 B3 200 3C+30 2B-20
+
+	mkDisk TT4
+}
+
+tt1 &
+tt2 &
+tt3 &
+tt4 &
+
+wait

@@ -1,0 +1,5 @@
+#!/usr/bin/fish
+vf activate em
+# fish -c 'sleep 2 ; and exec epiphany "localhost:8888"'  &
+# jupyter-notebook-nobrowser 
+jupyter notebook --browser=epiphany --NotebookApp.token= 
